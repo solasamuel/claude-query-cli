@@ -1,0 +1,839 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "product": {
+    "name": "claude-query",
+    "tagline": "Natural language queries against any data source via Claude API",
+    "documentVersion": "1.0",
+    "documentDate": "2026-05",
+    "author": "Sola Samuel / Spearhead Finance Ltd",
+    "buildEstimate": "3-4 evenings",
+    "primaryStack": [
+      "TypeScript",
+      "Commander.js",
+      "Claude API (tool use)",
+      "PostgreSQL",
+      "CSV",
+      "Notion API",
+      "Airtable API"
+    ],
+    "fdeSignal": "AI deployment — showing customers how Claude understands their data in 10 minutes",
+    "vision": "A single CLI that connects to any structured data source — PostgreSQL, CSV, JSON, Notion, Airtable — and lets a user query it in plain English. Claude's tool-use API constructs and executes the appropriate query, returning formatted results with the underlying query shown transparently.",
+    "successMetrics": [
+      "An FDE can connect to a customer's database and answer a business question in plain English in under 10 minutes.",
+      "Zero destructive queries ever reach a production database (hard safety gate).",
+      "--schema-only mode lets the tool run without any production data access.",
+      "Same query interface works identically across all five adapters."
+    ]
+  },
+  "labels": {
+    "priority": ["P0", "P1", "P2"],
+    "status": ["backlog", "in-progress", "done"],
+    "type": ["epic", "feature", "story", "task"]
+  },
+  "epics": [
+    {
+      "id": "EPIC-1",
+      "type": "epic",
+      "title": "CLI Foundation & Claude Tool-Use Integration",
+      "description": "Stand up the TypeScript CLI scaffold with Commander.js and wire in Claude's tool-use API so a natural-language question is turned into a structured query via the execute_query tool.",
+      "priority": "P0",
+      "buildPhase": "Evening 1",
+      "commit": "feat: CLI scaffold with PostgreSQL adapter and Claude tool use",
+      "features": ["FEAT-1.1", "FEAT-1.2", "FEAT-1.3"]
+    },
+    {
+      "id": "EPIC-2",
+      "type": "epic",
+      "title": "Data Source Adapters",
+      "description": "Implement the DataSourceAdapter interface across all five sources — PostgreSQL, CSV, JSON, Notion, Airtable — each with schema extraction and query execution appropriate to the source.",
+      "priority": "P0",
+      "buildPhase": "Evening 1-3",
+      "commit": "feat: CSV and JSON adapters; feat: Notion and Airtable adapters",
+      "features": ["FEAT-2.1", "FEAT-2.2", "FEAT-2.3", "FEAT-2.4", "FEAT-2.5"]
+    },
+    {
+      "id": "EPIC-3",
+      "type": "epic",
+      "title": "Query Safety & Governance",
+      "description": "Guarantee that destructive queries never execute and that strict-governance environments can run the tool without exposing production data.",
+      "priority": "P0",
+      "buildPhase": "Evening 1-2",
+      "commit": "feat: query safety validation and schema-only mode",
+      "features": ["FEAT-3.1", "FEAT-3.2", "FEAT-3.3"]
+    },
+    {
+      "id": "EPIC-4",
+      "type": "epic",
+      "title": "Query Modes & Output Formats",
+      "description": "Provide the operational flags (dry-run, explain, limit) and output formats (table, json, csv, markdown) that make the tool usable in demos and pipelines.",
+      "priority": "P1",
+      "buildPhase": "Evening 1-3",
+      "commit": "feat: query modes and output formatters",
+      "features": ["FEAT-4.1", "FEAT-4.2", "FEAT-4.3"]
+    },
+    {
+      "id": "EPIC-5",
+      "type": "epic",
+      "title": "Schema Context & Performance",
+      "description": "Build schema-first context for Claude and manage large schemas via caching and relevant-table selection so queries stay fast and cheap.",
+      "priority": "P1",
+      "buildPhase": "Evening 2",
+      "commit": "feat: schema context construction and caching",
+      "features": ["FEAT-5.1", "FEAT-5.2"]
+    },
+    {
+      "id": "EPIC-6",
+      "type": "epic",
+      "title": "Session Experience & Distribution",
+      "description": "Improve repeat-use ergonomics (history, REPL, save) and ship the README and distribution story.",
+      "priority": "P2",
+      "buildPhase": "Evening 3-4",
+      "commit": "docs: README with full per-source setup guide and examples",
+      "features": ["FEAT-6.1", "FEAT-6.2", "FEAT-6.3"]
+    }
+  ],
+  "features": [
+    {
+      "id": "FEAT-1.1",
+      "type": "feature",
+      "epic": "EPIC-1",
+      "title": "CLI scaffold with Commander.js",
+      "description": "Main command claude-query [question] with global options.",
+      "priority": "P0",
+      "stories": ["STORY-1.1.1", "STORY-1.1.2"]
+    },
+    {
+      "id": "FEAT-1.2",
+      "type": "feature",
+      "epic": "EPIC-1",
+      "title": "Claude tool-use call with execute_query tool",
+      "description": "Build the system prompt from schema, send the user question, define the execute_query tool, and handle the tool_use response block.",
+      "priority": "P0",
+      "stories": ["STORY-1.2.1", "STORY-1.2.2", "STORY-1.2.3"]
+    },
+    {
+      "id": "FEAT-1.3",
+      "type": "feature",
+      "epic": "EPIC-1",
+      "title": "DataSourceAdapter interface",
+      "description": "Define the common adapter contract: connect, getSchema, executeQuery, disconnect.",
+      "priority": "P0",
+      "stories": ["STORY-1.3.1"]
+    },
+    {
+      "id": "FEAT-2.1",
+      "type": "feature",
+      "epic": "EPIC-2",
+      "title": "PostgreSQL adapter",
+      "description": "Connection string; extracts tables, columns/types, FK relationships, row counts, and 3 sample distinct values per column.",
+      "priority": "P0",
+      "stories": ["STORY-2.1.1", "STORY-2.1.2", "STORY-2.1.3"]
+    },
+    {
+      "id": "FEAT-2.2",
+      "type": "feature",
+      "epic": "EPIC-2",
+      "title": "CSV adapter",
+      "description": "Reads file with papaparse; infers column types from first 100 rows; executes queries by filtering the parsed array in-memory.",
+      "priority": "P0",
+      "stories": ["STORY-2.2.1", "STORY-2.2.2"]
+    },
+    {
+      "id": "FEAT-2.3",
+      "type": "feature",
+      "epic": "EPIC-2",
+      "title": "JSON adapter",
+      "description": "Handles flat arrays and nested objects; flattens nested paths with dot notation; infers schema from first 10 records.",
+      "priority": "P0",
+      "stories": ["STORY-2.3.1", "STORY-2.3.2"]
+    },
+    {
+      "id": "FEAT-2.4",
+      "type": "feature",
+      "epic": "EPIC-2",
+      "title": "Notion adapter",
+      "description": "Database ID; fetches property schema including select option values; execute_query receives a JSON Notion filter object passed to notion.databases.query().",
+      "priority": "P1",
+      "stories": ["STORY-2.4.1", "STORY-2.4.2"]
+    },
+    {
+      "id": "FEAT-2.5",
+      "type": "feature",
+      "epic": "EPIC-2",
+      "title": "Airtable adapter",
+      "description": "Base ID + table name; fetches field schema and linked tables; execute_query receives a filterByFormula string.",
+      "priority": "P1",
+      "stories": ["STORY-2.5.1", "STORY-2.5.2"]
+    },
+    {
+      "id": "FEAT-3.1",
+      "type": "feature",
+      "epic": "EPIC-3",
+      "title": "Pre-execution SQL safety validation",
+      "description": "Hard gate: parse generated SQL with node-sql-parser; reject anything that is not a SELECT.",
+      "priority": "P0",
+      "stories": ["STORY-3.1.1", "STORY-3.1.2"]
+    },
+    {
+      "id": "FEAT-3.2",
+      "type": "feature",
+      "epic": "EPIC-3",
+      "title": "System-prompt safety instruction",
+      "description": "Soft gate: instruct Claude to only generate SELECT statements, never INSERT/UPDATE/DELETE/DROP/ALTER/CREATE/TRUNCATE.",
+      "priority": "P0",
+      "stories": ["STORY-3.2.1"]
+    },
+    {
+      "id": "FEAT-3.3",
+      "type": "feature",
+      "epic": "EPIC-3",
+      "title": "--schema-only mode",
+      "description": "Replace execute_query with describe_query so Claude explains the query it would run without executing it; no actual data is ever sent.",
+      "priority": "P0",
+      "stories": ["STORY-3.3.1", "STORY-3.3.2"]
+    },
+    {
+      "id": "FEAT-4.1",
+      "type": "feature",
+      "epic": "EPIC-4",
+      "title": "--dry-run mode",
+      "description": "Show the query Claude would run without executing it. Default for first-time connections to an unfamiliar database.",
+      "priority": "P1",
+      "stories": ["STORY-4.1.1"]
+    },
+    {
+      "id": "FEAT-4.2",
+      "type": "feature",
+      "epic": "EPIC-4",
+      "title": "--explain mode and --limit",
+      "description": "Add a required reasoning field to the tool schema and print it before results; --limit N caps results (default 100).",
+      "priority": "P1",
+      "stories": ["STORY-4.2.1", "STORY-4.2.2"]
+    },
+    {
+      "id": "FEAT-4.3",
+      "type": "feature",
+      "epic": "EPIC-4",
+      "title": "Output formatters",
+      "description": "Table (default, cli-table3), JSON, CSV (csv-stringify), and markdown (GFM table).",
+      "priority": "P1",
+      "stories": ["STORY-4.3.1", "STORY-4.3.2", "STORY-4.3.3", "STORY-4.3.4"]
+    },
+    {
+      "id": "FEAT-5.1",
+      "type": "feature",
+      "epic": "EPIC-5",
+      "title": "Schema-first context construction",
+      "description": "Serialize SchemaContext into a human-readable string for the Claude system prompt; never send raw schema JSON.",
+      "priority": "P1",
+      "stories": ["STORY-5.1.1"]
+    },
+    {
+      "id": "FEAT-5.2",
+      "type": "feature",
+      "epic": "EPIC-5",
+      "title": "Schema caching and relevant-table selection",
+      "description": "Cache full schema locally keyed by connection-string hash; on subsequent calls ask Claude which tables are relevant and send only those in detail.",
+      "priority": "P1",
+      "stories": ["STORY-5.2.1", "STORY-5.2.2"]
+    },
+    {
+      "id": "FEAT-6.1",
+      "type": "feature",
+      "epic": "EPIC-6",
+      "title": "Session history",
+      "description": "Recall the last 10 queries in a session; persist a query history file at ~/.claude-query/history.json.",
+      "priority": "P2",
+      "stories": ["STORY-6.1.1", "STORY-6.1.2"]
+    },
+    {
+      "id": "FEAT-6.2",
+      "type": "feature",
+      "epic": "EPIC-6",
+      "title": "Interactive REPL mode and --save",
+      "description": "Ask multiple questions in a session; --save flag exports results to a file.",
+      "priority": "P2",
+      "stories": ["STORY-6.2.1", "STORY-6.2.2"]
+    },
+    {
+      "id": "FEAT-6.3",
+      "type": "feature",
+      "epic": "EPIC-6",
+      "title": "README and distribution",
+      "description": "Full per-source setup guide, flag reference, example queries, governance notes, known limitations, and npx distribution.",
+      "priority": "P2",
+      "stories": ["STORY-6.3.1", "STORY-6.3.2"]
+    }
+  ],
+  "stories": [
+    {
+      "id": "STORY-1.1.1",
+      "type": "story",
+      "feature": "FEAT-1.1",
+      "title": "Define the claude-query command and required --source option",
+      "asA": "an FDE",
+      "iWant": "to invoke claude-query [question] --source <connection>",
+      "soThat": "I can point the tool at any data source from one command",
+      "acceptanceCriteria": [
+        "Running with no --source exits with a clear error.",
+        "The positional [question] argument is captured and passed downstream.",
+        "--help lists all options."
+      ],
+      "priority": "P0"
+    },
+    {
+      "id": "STORY-1.1.2",
+      "type": "story",
+      "feature": "FEAT-1.1",
+      "title": "Register global flags",
+      "asA": "a user",
+      "iWant": "the flags --dry-run, --schema-only, --limit N, --output, --explain registered",
+      "soThat": "I can control query behaviour and output",
+      "acceptanceCriteria": [
+        "--output accepts only table|json|csv|markdown and rejects other values.",
+        "--limit defaults to 100 and parses as an integer.",
+        "Boolean flags default to false."
+      ],
+      "priority": "P0"
+    },
+    {
+      "id": "STORY-1.2.1",
+      "type": "story",
+      "feature": "FEAT-1.2",
+      "title": "Build the system prompt from schema",
+      "asA": "the tool",
+      "iWant": "to compose a system prompt from the human-readable schema string plus safety instructions",
+      "soThat": "Claude reasons over the schema without raw data",
+      "acceptanceCriteria": [
+        "System prompt contains the formatted schema text.",
+        "System prompt contains the SELECT-only safety instruction.",
+        "No raw row data appears in the system prompt unless explicitly allowed."
+      ],
+      "priority": "P0"
+    },
+    {
+      "id": "STORY-1.2.2",
+      "type": "story",
+      "feature": "FEAT-1.2",
+      "title": "Define and send the execute_query tool",
+      "asA": "the tool",
+      "iWant": "to send the execute_query tool definition with query, query_type, reasoning",
+      "soThat": "Claude returns a structured query rather than free text",
+      "acceptanceCriteria": [
+        "Tool input_schema requires query, query_type, reasoning.",
+        "query_type enum is sql|notion_filter|airtable_formula|json_path.",
+        "The request includes the user's question as the user message."
+      ],
+      "priority": "P0"
+    },
+    {
+      "id": "STORY-1.2.3",
+      "type": "story",
+      "feature": "FEAT-1.2",
+      "title": "Handle the tool_use response block",
+      "asA": "the tool",
+      "iWant": "to parse Claude's tool_use block and extract the query",
+      "soThat": "I can validate and execute it",
+      "acceptanceCriteria": [
+        "A tool_use block of type execute_query is detected and its input extracted.",
+        "A response with no tool_use block produces a clear error.",
+        "The extracted query and reasoning are made available downstream."
+      ],
+      "priority": "P0"
+    },
+    {
+      "id": "STORY-1.3.1",
+      "type": "story",
+      "feature": "FEAT-1.3",
+      "title": "Define DataSourceAdapter interface",
+      "asA": "a developer",
+      "iWant": "a common adapter contract",
+      "soThat": "all five sources are interchangeable behind one interface",
+      "acceptanceCriteria": [
+        "Interface declares name, connect, getSchema, executeQuery, disconnect.",
+        "getSchema returns a SchemaContext object.",
+        "executeQuery returns Row[]."
+      ],
+      "priority": "P0"
+    },
+    {
+      "id": "STORY-2.1.1",
+      "type": "story",
+      "feature": "FEAT-2.1",
+      "title": "Connect to PostgreSQL and extract structural schema",
+      "asA": "an FDE",
+      "iWant": "tables, columns/types, and FK relationships extracted from a connection string",
+      "soThat": "Claude understands the database structure",
+      "acceptanceCriteria": [
+        "All table names in the public schema are returned.",
+        "Each column's name and type is captured.",
+        "Foreign key relationships are captured."
+      ],
+      "priority": "P0"
+    },
+    {
+      "id": "STORY-2.1.2",
+      "type": "story",
+      "feature": "FEAT-2.1",
+      "title": "Capture row counts and sample values",
+      "asA": "the tool",
+      "iWant": "row counts and 3 sample distinct values per column",
+      "soThat": "Claude can recognise enum-like fields",
+      "acceptanceCriteria": [
+        "Row count is captured per table.",
+        "Up to 3 distinct sample values per column are captured.",
+        "TABLESAMPLE SYSTEM is used for large tables to avoid full scans."
+      ],
+      "priority": "P0"
+    },
+    {
+      "id": "STORY-2.1.3",
+      "type": "story",
+      "feature": "FEAT-2.1",
+      "title": "Execute validated SELECT and return rows",
+      "asA": "a user",
+      "iWant": "the generated SELECT executed and rows returned",
+      "soThat": "I see results for my question",
+      "acceptanceCriteria": [
+        "Only a query that passed safety validation is executed.",
+        "Results are returned as Row[].",
+        "The connection is closed on disconnect."
+      ],
+      "priority": "P0"
+    },
+    {
+      "id": "STORY-2.2.1",
+      "type": "story",
+      "feature": "FEAT-2.2",
+      "title": "Parse CSV and infer schema",
+      "asA": "a user",
+      "iWant": "column types inferred from the first 100 rows with min/max and 5 sample values",
+      "soThat": "Claude understands the CSV shape",
+      "acceptanceCriteria": [
+        "Types inferred as string/number/date/boolean.",
+        "min/max captured for numeric and date columns.",
+        "Row count and 5 sample distinct values per column captured."
+      ],
+      "priority": "P0"
+    },
+    {
+      "id": "STORY-2.2.2",
+      "type": "story",
+      "feature": "FEAT-2.2",
+      "title": "Execute in-memory filter on CSV",
+      "asA": "a user",
+      "iWant": "queries executed by filtering the parsed array in memory",
+      "soThat": "I can query a CSV with no database",
+      "acceptanceCriteria": [
+        "Claude generates a filter using the json_path query_type.",
+        "The filter is applied to the parsed array.",
+        "Matching rows are returned as Row[]."
+      ],
+      "priority": "P0"
+    },
+    {
+      "id": "STORY-2.3.1",
+      "type": "story",
+      "feature": "FEAT-2.3",
+      "title": "Infer JSON schema from first 10 records",
+      "asA": "a user",
+      "iWant": "schema inferred from the first 10 records of a flat or nested JSON",
+      "soThat": "Claude understands the JSON shape",
+      "acceptanceCriteria": [
+        "Flat arrays of objects are supported.",
+        "Nested objects are supported.",
+        "Nested paths are flattened with dot notation."
+      ],
+      "priority": "P0"
+    },
+    {
+      "id": "STORY-2.3.2",
+      "type": "story",
+      "feature": "FEAT-2.3",
+      "title": "Execute json_path filter on JSON",
+      "asA": "a user",
+      "iWant": "queries executed against the in-memory JSON array",
+      "soThat": "I can query a JSON file",
+      "acceptanceCriteria": [
+        "json_path query_type is used.",
+        "Dot-notation paths resolve against nested objects.",
+        "Matching records are returned as Row[]."
+      ],
+      "priority": "P0"
+    },
+    {
+      "id": "STORY-2.4.1",
+      "type": "story",
+      "feature": "FEAT-2.4",
+      "title": "Fetch Notion database property schema",
+      "asA": "a user",
+      "iWant": "property names/types and select option values fetched from a database ID",
+      "soThat": "Claude can build a valid Notion filter",
+      "acceptanceCriteria": [
+        "Property names and types (title/text/number/select/date/relation) captured.",
+        "All option values of select/multi-select properties included.",
+        "Database name captured."
+      ],
+      "priority": "P1"
+    },
+    {
+      "id": "STORY-2.4.2",
+      "type": "story",
+      "feature": "FEAT-2.4",
+      "title": "Execute Notion filter object",
+      "asA": "a user",
+      "iWant": "Claude's JSON Notion filter object passed to databases.query()",
+      "soThat": "I get matching pages back",
+      "acceptanceCriteria": [
+        "query_type is notion_filter.",
+        "The filter/sorts object is passed directly to notion.databases.query().",
+        "Returned pages are mapped to Row[]."
+      ],
+      "priority": "P1"
+    },
+    {
+      "id": "STORY-2.5.1",
+      "type": "story",
+      "feature": "FEAT-2.5",
+      "title": "Fetch Airtable field schema",
+      "asA": "a user",
+      "iWant": "field names/types and linked table names fetched for a base + table",
+      "soThat": "Claude can build a valid formula",
+      "acceptanceCriteria": [
+        "Field names and types captured.",
+        "Linked table names captured.",
+        "Select field options captured."
+      ],
+      "priority": "P1"
+    },
+    {
+      "id": "STORY-2.5.2",
+      "type": "story",
+      "feature": "FEAT-2.5",
+      "title": "Execute Airtable filterByFormula",
+      "asA": "a user",
+      "iWant": "Claude's filterByFormula string applied to the table",
+      "soThat": "I get matching records back",
+      "acceptanceCriteria": [
+        "query_type is airtable_formula.",
+        "The formula string is passed as filterByFormula.",
+        "Returned records are mapped to Row[]."
+      ],
+      "priority": "P1"
+    },
+    {
+      "id": "STORY-3.1.1",
+      "type": "story",
+      "feature": "FEAT-3.1",
+      "title": "Reject non-SELECT SQL before execution",
+      "asA": "a database owner",
+      "iWant": "any non-SELECT statement rejected before execution",
+      "soThat": "destructive queries never run",
+      "acceptanceCriteria": [
+        "SQL is parsed with node-sql-parser.",
+        "INSERT/UPDATE/DELETE/DROP/ALTER/CREATE/TRUNCATE are rejected with a clear error.",
+        "A valid SELECT passes."
+      ],
+      "priority": "P0"
+    },
+    {
+      "id": "STORY-3.1.2",
+      "type": "story",
+      "feature": "FEAT-3.1",
+      "title": "Reject multi-statement and obfuscated SQL",
+      "asA": "a database owner",
+      "iWant": "stacked or comment-obfuscated statements rejected",
+      "soThat": "the gate cannot be bypassed",
+      "acceptanceCriteria": [
+        "Multiple statements separated by ; are rejected.",
+        "A SELECT with a trailing DELETE is rejected.",
+        "Parse failure results in rejection, not execution."
+      ],
+      "priority": "P0"
+    },
+    {
+      "id": "STORY-3.2.1",
+      "type": "story",
+      "feature": "FEAT-3.2",
+      "title": "Include SELECT-only instruction in system prompt",
+      "asA": "the tool",
+      "iWant": "the system prompt to forbid non-SELECT statements",
+      "soThat": "Claude rarely attempts a destructive query (soft gate)",
+      "acceptanceCriteria": [
+        "System prompt names the forbidden statement types explicitly.",
+        "Instruction is present for every SQL-source request."
+      ],
+      "priority": "P0"
+    },
+    {
+      "id": "STORY-3.3.1",
+      "type": "story",
+      "feature": "FEAT-3.3",
+      "title": "Swap execute_query for describe_query in schema-only mode",
+      "asA": "a governance-constrained user",
+      "iWant": "--schema-only to use a describe_query tool that never executes",
+      "soThat": "no production data is touched",
+      "acceptanceCriteria": [
+        "describe_query tool replaces execute_query when --schema-only is set.",
+        "Claude returns the query it would run plus an explanation.",
+        "No adapter executeQuery call is made."
+      ],
+      "priority": "P0"
+    },
+    {
+      "id": "STORY-3.3.2",
+      "type": "story",
+      "feature": "FEAT-3.3",
+      "title": "Guarantee no data sent in schema-only mode",
+      "asA": "a security reviewer",
+      "iWant": "assurance that only schema (never rows) is sent in schema-only mode",
+      "soThat": "the tool is safe under strict data governance",
+      "acceptanceCriteria": [
+        "Sample-value capture is suppressed or governance-approved in schema-only mode.",
+        "Outbound payload contains no row data.",
+        "Mode is reflected in console output."
+      ],
+      "priority": "P0"
+    },
+    {
+      "id": "STORY-4.1.1",
+      "type": "story",
+      "feature": "FEAT-4.1",
+      "title": "Dry-run shows query without executing",
+      "asA": "a cautious operator",
+      "iWant": "--dry-run to print the constructed query and stop",
+      "soThat": "I can review before touching production",
+      "acceptanceCriteria": [
+        "The constructed query is printed.",
+        "No executeQuery call is made.",
+        "Exit is clean with no results table."
+      ],
+      "priority": "P1"
+    },
+    {
+      "id": "STORY-4.2.1",
+      "type": "story",
+      "feature": "FEAT-4.2",
+      "title": "Explain prints reasoning before results",
+      "asA": "a user",
+      "iWant": "--explain to print Claude's reasoning before the results",
+      "soThat": "I understand why the query answers my question",
+      "acceptanceCriteria": [
+        "reasoning is a required field on the tool schema.",
+        "Reasoning text is printed before the results.",
+        "Without --explain, reasoning is captured but not printed."
+      ],
+      "priority": "P1"
+    },
+    {
+      "id": "STORY-4.2.2",
+      "type": "story",
+      "feature": "FEAT-4.2",
+      "title": "Limit caps result rows",
+      "asA": "a user",
+      "iWant": "--limit N to cap returned rows regardless of the query",
+      "soThat": "large result sets stay manageable",
+      "acceptanceCriteria": [
+        "Default cap is 100 rows.",
+        "Results are truncated to N rows.",
+        "Truncation is indicated to the user."
+      ],
+      "priority": "P1"
+    },
+    {
+      "id": "STORY-4.3.1",
+      "type": "story",
+      "feature": "FEAT-4.3",
+      "title": "Table output (default)",
+      "asA": "a user",
+      "iWant": "results pretty-printed as an ASCII table",
+      "soThat": "results are readable in the terminal",
+      "acceptanceCriteria": [
+        "cli-table3 renders headers and rows.",
+        "Table is the default when --output is omitted.",
+        "Empty result sets render a clear 'no rows' message."
+      ],
+      "priority": "P1"
+    },
+    {
+      "id": "STORY-4.3.2",
+      "type": "story",
+      "feature": "FEAT-4.3",
+      "title": "JSON output",
+      "asA": "a user",
+      "iWant": "--output json to emit a raw JSON array",
+      "soThat": "I can pipe results to other tools",
+      "acceptanceCriteria": [
+        "Output is a valid JSON array of objects.",
+        "No table formatting is printed.",
+        "Output parses with JSON.parse."
+      ],
+      "priority": "P1"
+    },
+    {
+      "id": "STORY-4.3.3",
+      "type": "story",
+      "feature": "FEAT-4.3",
+      "title": "CSV output",
+      "asA": "a user",
+      "iWant": "--output csv to emit CSV with headers",
+      "soThat": "I can open results in a spreadsheet",
+      "acceptanceCriteria": [
+        "csv-stringify produces a header row.",
+        "Values containing commas/quotes are escaped.",
+        "Row count matches the result set (after limit)."
+      ],
+      "priority": "P1"
+    },
+    {
+      "id": "STORY-4.3.4",
+      "type": "story",
+      "feature": "FEAT-4.3",
+      "title": "Markdown output",
+      "asA": "a user",
+      "iWant": "--output markdown to emit a GFM table",
+      "soThat": "I can paste results into docs",
+      "acceptanceCriteria": [
+        "Output is a valid GFM table with header separator row.",
+        "Column alignment row is present.",
+        "Table renders correctly when pasted into a markdown viewer."
+      ],
+      "priority": "P1"
+    },
+    {
+      "id": "STORY-5.1.1",
+      "type": "story",
+      "feature": "FEAT-5.1",
+      "title": "Serialize SchemaContext to readable text",
+      "asA": "the tool",
+      "iWant": "SchemaContext rendered as human-readable text, not raw JSON",
+      "soThat": "Claude reasons over it more naturally",
+      "acceptanceCriteria": [
+        "Output is formatted prose/tabular text, not JSON.",
+        "Tables, columns, types and relationships are all represented.",
+        "Same renderer is used across adapters."
+      ],
+      "priority": "P1"
+    },
+    {
+      "id": "STORY-5.2.1",
+      "type": "story",
+      "feature": "FEAT-5.2",
+      "title": "Cache full schema by connection hash",
+      "asA": "the tool",
+      "iWant": "the full schema cached locally keyed by a connection-string hash",
+      "soThat": "repeat queries in a session avoid re-extraction",
+      "acceptanceCriteria": [
+        "Cache key is a hash of the connection string.",
+        "A cache hit skips re-extraction.",
+        "Cache is scoped to the session."
+      ],
+      "priority": "P1"
+    },
+    {
+      "id": "STORY-5.2.2",
+      "type": "story",
+      "feature": "FEAT-5.2",
+      "title": "Send only relevant tables on subsequent calls",
+      "asA": "the tool",
+      "iWant": "Claude to name relevant_tables so only those are sent in detail",
+      "soThat": "large schemas stay cheap and fast",
+      "acceptanceCriteria": [
+        "Tool schema includes a relevant_tables field.",
+        "First call sends full schema; later calls send only named tables in detail.",
+        "Behaviour degrades gracefully for small schemas."
+      ],
+      "priority": "P1"
+    },
+    {
+      "id": "STORY-6.1.1",
+      "type": "story",
+      "feature": "FEAT-6.1",
+      "title": "Recall last 10 queries in session",
+      "asA": "a user",
+      "iWant": "the last 10 queries recalled within a session",
+      "soThat": "I can re-run or reference recent queries",
+      "acceptanceCriteria": [
+        "Up to 10 recent queries are retained.",
+        "Recall lists question and constructed query.",
+        "Order is most-recent-first."
+      ],
+      "priority": "P2"
+    },
+    {
+      "id": "STORY-6.1.2",
+      "type": "story",
+      "feature": "FEAT-6.1",
+      "title": "Persist history file",
+      "asA": "a user",
+      "iWant": "a history file at ~/.claude-query/history.json",
+      "soThat": "history survives across sessions",
+      "acceptanceCriteria": [
+        "History is written to ~/.claude-query/history.json.",
+        "The directory is created if missing.",
+        "Malformed history files are handled without crashing."
+      ],
+      "priority": "P2"
+    },
+    {
+      "id": "STORY-6.2.1",
+      "type": "story",
+      "feature": "FEAT-6.2",
+      "title": "Interactive REPL mode",
+      "asA": "a user",
+      "iWant": "to ask multiple questions in one session",
+      "soThat": "I avoid re-connecting per question",
+      "acceptanceCriteria": [
+        "REPL accepts repeated questions until exit.",
+        "Schema cache is reused across questions.",
+        "A clear exit command ends the session."
+      ],
+      "priority": "P2"
+    },
+    {
+      "id": "STORY-6.2.2",
+      "type": "story",
+      "feature": "FEAT-6.2",
+      "title": "Save results with --save",
+      "asA": "a user",
+      "iWant": "--save to export the result set to a file",
+      "soThat": "I can keep query outputs",
+      "acceptanceCriteria": [
+        "--save writes results in the chosen --output format.",
+        "A file path is reported on success.",
+        "Existing-file behaviour is defined (overwrite or error)."
+      ],
+      "priority": "P2"
+    },
+    {
+      "id": "STORY-6.3.1",
+      "type": "story",
+      "feature": "FEAT-6.3",
+      "title": "Per-source README setup guide",
+      "asA": "a new user",
+      "iWant": "connection formats and examples for each adapter plus a flag reference",
+      "soThat": "I can get started quickly",
+      "acceptanceCriteria": [
+        "Installation (npx and global) documented.",
+        "ANTHROPIC_API_KEY setup documented.",
+        "Per-adapter connection format, 5 example queries, and flag reference included."
+      ],
+      "priority": "P2"
+    },
+    {
+      "id": "STORY-6.3.2",
+      "type": "story",
+      "feature": "FEAT-6.3",
+      "title": "Document governance mode and known limitations",
+      "asA": "an enterprise reviewer",
+      "iWant": "the --schema-only governance angle and known limitations documented",
+      "soThat": "I can assess fit for a regulated environment",
+      "acceptanceCriteria": [
+        "--schema-only explained for data governance.",
+        "Known limitations listed (no cross-adapter JOINs, Notion relation queries limited to IDs).",
+        "Distribution channels noted."
+      ],
+      "priority": "P2"
+    }
+  ]
+}

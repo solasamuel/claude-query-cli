@@ -1,0 +1,518 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "testPlan": {
+    "name": "claude-query Test Plan",
+    "version": "1.0",
+    "date": "2026-05",
+    "author": "Sola Samuel / Spearhead Finance Ltd",
+    "linkedBacklog": "product-backlog.json",
+    "overview": "Verifies claude-query against its product backlog. Each test case links to a backlog story, feature, or epic via the `traces` field. The plan emphasises the two hard requirements: destructive queries must never execute, and --schema-only must never transmit row data.",
+    "scope": {
+      "inScope": [
+        "CLI argument parsing and flag validation",
+        "Claude tool-use request/response handling (mocked Claude where appropriate)",
+        "All five adapters: schema extraction and query execution",
+        "Query safety validation (SQL gate)",
+        "Query modes: dry-run, schema-only, explain, limit",
+        "Output formatters: table, json, csv, markdown",
+        "Schema caching and relevant-table selection",
+        "Session history, REPL, save"
+      ],
+      "outOfScope": [
+        "Anthropic API availability/SLA",
+        "Third-party SaaS uptime (Notion, Airtable)",
+        "Performance/load testing beyond schema-size handling"
+      ]
+    },
+    "strategy": {
+      "levels": ["unit", "integration", "e2e"],
+      "environments": [
+        "Local PostgreSQL (Dockerised seed database)",
+        "Fixture CSV/JSON files",
+        "Notion test database and Airtable test base",
+        "Mocked Claude API for deterministic tool-use responses; live Claude for smoke e2e"
+      ],
+      "entryCriteria": [
+        "Adapter under test builds and connects.",
+        "Required credentials/fixtures provisioned."
+      ],
+      "exitCriteria": [
+        "All P0 cases pass.",
+        "No open Critical or High defect on a safety case.",
+        "Backlog traceability complete: every P0 story has at least one linked test case."
+      ]
+    },
+    "priorities": ["P0", "P1", "P2"],
+    "caseTypes": ["positive", "negative", "boundary", "security"]
+  },
+  "testCases": [
+    {
+      "id": "TC-001",
+      "title": "claude-query exits with error when --source is omitted",
+      "traces": { "story": "STORY-1.1.1", "feature": "FEAT-1.1", "epic": "EPIC-1" },
+      "level": "unit",
+      "type": "negative",
+      "priority": "P0",
+      "preconditions": ["CLI built"],
+      "steps": ["Run `claude-query \"any question\"` with no --source"],
+      "expected": "Process exits non-zero with a clear 'missing --source' error message."
+    },
+    {
+      "id": "TC-002",
+      "title": "Positional question is captured and passed downstream",
+      "traces": { "story": "STORY-1.1.1", "feature": "FEAT-1.1", "epic": "EPIC-1" },
+      "level": "unit",
+      "type": "positive",
+      "priority": "P0",
+      "preconditions": ["CLI built", "stub adapter"],
+      "steps": ["Run with a question and a valid --source against a stub adapter"],
+      "expected": "The question string reaches the Claude request builder unchanged."
+    },
+    {
+      "id": "TC-003",
+      "title": "--output rejects unsupported values",
+      "traces": { "story": "STORY-1.1.2", "feature": "FEAT-1.1", "epic": "EPIC-1" },
+      "level": "unit",
+      "type": "negative",
+      "priority": "P0",
+      "preconditions": ["CLI built"],
+      "steps": ["Run with `--output yaml`"],
+      "expected": "Process exits non-zero; only table|json|csv|markdown accepted."
+    },
+    {
+      "id": "TC-004",
+      "title": "--limit defaults to 100 and parses as integer",
+      "traces": { "story": "STORY-1.1.2", "feature": "FEAT-1.1", "epic": "EPIC-1" },
+      "level": "unit",
+      "type": "boundary",
+      "priority": "P1",
+      "preconditions": ["CLI built"],
+      "steps": ["Run without --limit; then run with `--limit 25`"],
+      "expected": "Default resolves to 100; explicit value parses to integer 25; non-numeric is rejected."
+    },
+    {
+      "id": "TC-005",
+      "title": "System prompt contains schema text and SELECT-only instruction, no raw rows",
+      "traces": { "story": "STORY-1.2.1", "feature": "FEAT-1.2", "epic": "EPIC-1" },
+      "level": "integration",
+      "type": "security",
+      "priority": "P0",
+      "preconditions": ["Seed Postgres schema"],
+      "steps": ["Build the system prompt for a Postgres source", "Inspect the prompt payload"],
+      "expected": "Prompt includes formatted schema and the SELECT-only instruction; contains no raw row data."
+    },
+    {
+      "id": "TC-006",
+      "title": "execute_query tool definition requires query, query_type, reasoning",
+      "traces": { "story": "STORY-1.2.2", "feature": "FEAT-1.2", "epic": "EPIC-1" },
+      "level": "unit",
+      "type": "positive",
+      "priority": "P0",
+      "preconditions": ["Tool builder available"],
+      "steps": ["Generate the tool definition", "Assert input_schema"],
+      "expected": "required = [query, query_type, reasoning]; query_type enum = [sql, notion_filter, airtable_formula, json_path]."
+    },
+    {
+      "id": "TC-007",
+      "title": "tool_use response block is parsed and query extracted",
+      "traces": { "story": "STORY-1.2.3", "feature": "FEAT-1.2", "epic": "EPIC-1" },
+      "level": "integration",
+      "type": "positive",
+      "priority": "P0",
+      "preconditions": ["Mocked Claude returning a tool_use block"],
+      "steps": ["Send a question", "Capture parsed query and reasoning"],
+      "expected": "query and reasoning are extracted from the execute_query tool_use block."
+    },
+    {
+      "id": "TC-008",
+      "title": "Response with no tool_use block produces a clear error",
+      "traces": { "story": "STORY-1.2.3", "feature": "FEAT-1.2", "epic": "EPIC-1" },
+      "level": "integration",
+      "type": "negative",
+      "priority": "P1",
+      "preconditions": ["Mocked Claude returning text only"],
+      "steps": ["Send a question", "Observe handling"],
+      "expected": "A clear error is surfaced; nothing is executed."
+    },
+    {
+      "id": "TC-009",
+      "title": "Adapters conform to DataSourceAdapter interface",
+      "traces": { "story": "STORY-1.3.1", "feature": "FEAT-1.3", "epic": "EPIC-1" },
+      "level": "unit",
+      "type": "positive",
+      "priority": "P0",
+      "preconditions": ["All adapters built"],
+      "steps": ["Type-check / assert each adapter exposes name, connect, getSchema, executeQuery, disconnect"],
+      "expected": "Every adapter satisfies the interface; getSchema returns SchemaContext; executeQuery returns Row[]."
+    },
+    {
+      "id": "TC-010",
+      "title": "Postgres schema extraction: tables, columns/types, FKs",
+      "traces": { "story": "STORY-2.1.1", "feature": "FEAT-2.1", "epic": "EPIC-2" },
+      "level": "integration",
+      "type": "positive",
+      "priority": "P0",
+      "preconditions": ["Seed Postgres with customers/orders and an FK"],
+      "steps": ["Call getSchema()"],
+      "expected": "All public tables, each column name/type, and the customers→orders FK are present."
+    },
+    {
+      "id": "TC-011",
+      "title": "Postgres schema: row counts and 3 sample distinct values, TABLESAMPLE on large tables",
+      "traces": { "story": "STORY-2.1.2", "feature": "FEAT-2.1", "epic": "EPIC-2" },
+      "level": "integration",
+      "type": "positive",
+      "priority": "P1",
+      "preconditions": ["Seed table with >100k rows"],
+      "steps": ["Call getSchema()", "Inspect samples and method used"],
+      "expected": "Row count present; up to 3 distinct samples per column; large table uses TABLESAMPLE SYSTEM (no full scan)."
+    },
+    {
+      "id": "TC-012",
+      "title": "Validated SELECT executes and returns Row[]; connection closes on disconnect",
+      "traces": { "story": "STORY-2.1.3", "feature": "FEAT-2.1", "epic": "EPIC-2" },
+      "level": "integration",
+      "type": "positive",
+      "priority": "P0",
+      "preconditions": ["Seed Postgres"],
+      "steps": ["Execute a known-good SELECT", "Call disconnect()"],
+      "expected": "Rows returned as Row[]; pool/connection is released on disconnect."
+    },
+    {
+      "id": "TC-013",
+      "title": "CSV type inference with min/max and 5 samples",
+      "traces": { "story": "STORY-2.2.1", "feature": "FEAT-2.2", "epic": "EPIC-2" },
+      "level": "unit",
+      "type": "positive",
+      "priority": "P0",
+      "preconditions": ["Fixture CSV with mixed types"],
+      "steps": ["Call getSchema()"],
+      "expected": "Types are string/number/date/boolean; min/max on numeric & date; row count and 5 distinct samples per column."
+    },
+    {
+      "id": "TC-014",
+      "title": "CSV in-memory filter via json_path",
+      "traces": { "story": "STORY-2.2.2", "feature": "FEAT-2.2", "epic": "EPIC-2" },
+      "level": "integration",
+      "type": "positive",
+      "priority": "P0",
+      "preconditions": ["Fixture CSV", "mocked Claude returning a json_path filter"],
+      "steps": ["Run a query", "Inspect returned rows"],
+      "expected": "Filter is applied to the parsed array; only matching rows returned as Row[]."
+    },
+    {
+      "id": "TC-015",
+      "title": "JSON schema inference for flat and nested with dot-notation",
+      "traces": { "story": "STORY-2.3.1", "feature": "FEAT-2.3", "epic": "EPIC-2" },
+      "level": "unit",
+      "type": "positive",
+      "priority": "P0",
+      "preconditions": ["Fixture flat JSON and nested JSON"],
+      "steps": ["Call getSchema() on each"],
+      "expected": "Schema inferred from first 10 records; nested paths flattened with dot notation."
+    },
+    {
+      "id": "TC-016",
+      "title": "JSON json_path filter resolves nested paths",
+      "traces": { "story": "STORY-2.3.2", "feature": "FEAT-2.3", "epic": "EPIC-2" },
+      "level": "integration",
+      "type": "positive",
+      "priority": "P1",
+      "preconditions": ["Nested JSON fixture", "mocked Claude filter"],
+      "steps": ["Run a query on a nested field"],
+      "expected": "Dot-notation path resolves; matching records returned."
+    },
+    {
+      "id": "TC-017",
+      "title": "Notion property schema includes select option values",
+      "traces": { "story": "STORY-2.4.1", "feature": "FEAT-2.4", "epic": "EPIC-2" },
+      "level": "integration",
+      "type": "positive",
+      "priority": "P1",
+      "preconditions": ["Notion test database with a select property"],
+      "steps": ["Call getSchema()"],
+      "expected": "Property names/types and all select/multi-select option values captured."
+    },
+    {
+      "id": "TC-018",
+      "title": "Notion filter object passed to databases.query()",
+      "traces": { "story": "STORY-2.4.2", "feature": "FEAT-2.4", "epic": "EPIC-2" },
+      "level": "integration",
+      "type": "positive",
+      "priority": "P1",
+      "preconditions": ["Notion test database", "mocked Claude notion_filter"],
+      "steps": ["Run a query", "Capture the call to notion.databases.query()"],
+      "expected": "The filter/sorts object is passed through unchanged; pages mapped to Row[]."
+    },
+    {
+      "id": "TC-019",
+      "title": "Airtable field schema includes linked tables and select options",
+      "traces": { "story": "STORY-2.5.1", "feature": "FEAT-2.5", "epic": "EPIC-2" },
+      "level": "integration",
+      "type": "positive",
+      "priority": "P1",
+      "preconditions": ["Airtable test base with a linked field"],
+      "steps": ["Call getSchema()"],
+      "expected": "Field names/types, linked table names, and select options captured."
+    },
+    {
+      "id": "TC-020",
+      "title": "Airtable filterByFormula applied",
+      "traces": { "story": "STORY-2.5.2", "feature": "FEAT-2.5", "epic": "EPIC-2" },
+      "level": "integration",
+      "type": "positive",
+      "priority": "P1",
+      "preconditions": ["Airtable test base", "mocked Claude airtable_formula"],
+      "steps": ["Run a query", "Capture filterByFormula passed to the SDK"],
+      "expected": "The formula string is passed as filterByFormula; records mapped to Row[]."
+    },
+    {
+      "id": "TC-021",
+      "title": "SAFETY: non-SELECT statements are rejected before execution",
+      "traces": { "story": "STORY-3.1.1", "feature": "FEAT-3.1", "epic": "EPIC-3" },
+      "level": "unit",
+      "type": "security",
+      "priority": "P0",
+      "preconditions": ["node-sql-parser wired"],
+      "steps": ["Validate each of INSERT, UPDATE, DELETE, DROP, ALTER, CREATE, TRUNCATE", "Validate a plain SELECT"],
+      "expected": "All non-SELECT statements throw a clear error; the SELECT passes. No execution occurs for rejected statements."
+    },
+    {
+      "id": "TC-022",
+      "title": "SAFETY: stacked / obfuscated statements rejected",
+      "traces": { "story": "STORY-3.1.2", "feature": "FEAT-3.1", "epic": "EPIC-3" },
+      "level": "unit",
+      "type": "security",
+      "priority": "P0",
+      "preconditions": ["node-sql-parser wired"],
+      "steps": [
+        "Validate `SELECT 1; DELETE FROM users`",
+        "Validate `SELECT * FROM t -- ; DROP TABLE t`",
+        "Validate an unparseable string"
+      ],
+      "expected": "Stacked statements, comment-obfuscated DDL, and parse failures all result in rejection, never execution."
+    },
+    {
+      "id": "TC-023",
+      "title": "System prompt forbids non-SELECT statements (soft gate)",
+      "traces": { "story": "STORY-3.2.1", "feature": "FEAT-3.2", "epic": "EPIC-3" },
+      "level": "unit",
+      "type": "security",
+      "priority": "P0",
+      "preconditions": ["Prompt builder available"],
+      "steps": ["Build the system prompt for a SQL source", "Search for the safety instruction"],
+      "expected": "Prompt explicitly names the forbidden statement types and is present for every SQL-source request."
+    },
+    {
+      "id": "TC-024",
+      "title": "SAFETY: --schema-only swaps to describe_query and never executes",
+      "traces": { "story": "STORY-3.3.1", "feature": "FEAT-3.3", "epic": "EPIC-3" },
+      "level": "integration",
+      "type": "security",
+      "priority": "P0",
+      "preconditions": ["Seed Postgres", "mocked Claude"],
+      "steps": ["Run with --schema-only", "Spy on adapter.executeQuery"],
+      "expected": "describe_query tool is sent; Claude returns the would-be query plus explanation; adapter.executeQuery is never called."
+    },
+    {
+      "id": "TC-025",
+      "title": "SAFETY: schema-only payload contains no row data",
+      "traces": { "story": "STORY-3.3.2", "feature": "FEAT-3.3", "epic": "EPIC-3" },
+      "level": "integration",
+      "type": "security",
+      "priority": "P0",
+      "preconditions": ["Seed Postgres with recognisable sentinel row values"],
+      "steps": ["Run with --schema-only", "Capture the full outbound payload to Claude"],
+      "expected": "No sentinel row values appear anywhere in the payload; mode is reflected in console output."
+    },
+    {
+      "id": "TC-026",
+      "title": "--dry-run prints query and does not execute",
+      "traces": { "story": "STORY-4.1.1", "feature": "FEAT-4.1", "epic": "EPIC-4" },
+      "level": "integration",
+      "type": "positive",
+      "priority": "P1",
+      "preconditions": ["Seed Postgres", "mocked Claude"],
+      "steps": ["Run with --dry-run", "Spy on adapter.executeQuery"],
+      "expected": "Constructed query is printed; executeQuery is never called; clean exit with no results table."
+    },
+    {
+      "id": "TC-027",
+      "title": "--explain prints reasoning before results",
+      "traces": { "story": "STORY-4.2.1", "feature": "FEAT-4.2", "epic": "EPIC-4" },
+      "level": "integration",
+      "type": "positive",
+      "priority": "P1",
+      "preconditions": ["mocked Claude returning reasoning"],
+      "steps": ["Run with --explain", "Inspect stdout ordering"],
+      "expected": "Reasoning is printed before the results; without --explain it is captured but not printed."
+    },
+    {
+      "id": "TC-028",
+      "title": "--limit caps and indicates truncation",
+      "traces": { "story": "STORY-4.2.2", "feature": "FEAT-4.2", "epic": "EPIC-4" },
+      "level": "integration",
+      "type": "boundary",
+      "priority": "P1",
+      "preconditions": ["Result set larger than the limit"],
+      "steps": ["Run with `--limit 5` against a 50-row result"],
+      "expected": "Exactly 5 rows shown; truncation is indicated to the user; default of 100 applies when omitted."
+    },
+    {
+      "id": "TC-029",
+      "title": "Table output renders and handles empty sets",
+      "traces": { "story": "STORY-4.3.1", "feature": "FEAT-4.3", "epic": "EPIC-4" },
+      "level": "unit",
+      "type": "positive",
+      "priority": "P1",
+      "preconditions": ["Formatter available"],
+      "steps": ["Render a non-empty result", "Render an empty result"],
+      "expected": "cli-table3 renders headers/rows by default; empty sets show a clear 'no rows' message."
+    },
+    {
+      "id": "TC-030",
+      "title": "JSON output is a valid parseable array",
+      "traces": { "story": "STORY-4.3.2", "feature": "FEAT-4.3", "epic": "EPIC-4" },
+      "level": "unit",
+      "type": "positive",
+      "priority": "P1",
+      "preconditions": ["Formatter available"],
+      "steps": ["Render with --output json", "JSON.parse the output"],
+      "expected": "Output is a valid JSON array of objects with no table formatting."
+    },
+    {
+      "id": "TC-031",
+      "title": "CSV output has headers and escapes special characters",
+      "traces": { "story": "STORY-4.3.3", "feature": "FEAT-4.3", "epic": "EPIC-4" },
+      "level": "unit",
+      "type": "boundary",
+      "priority": "P1",
+      "preconditions": ["Result with commas/quotes in values"],
+      "steps": ["Render with --output csv"],
+      "expected": "Header row present; commas/quotes escaped; row count matches result (after limit)."
+    },
+    {
+      "id": "TC-032",
+      "title": "Markdown output is a valid GFM table",
+      "traces": { "story": "STORY-4.3.4", "feature": "FEAT-4.3", "epic": "EPIC-4" },
+      "level": "unit",
+      "type": "positive",
+      "priority": "P1",
+      "preconditions": ["Formatter available"],
+      "steps": ["Render with --output markdown", "Render in a markdown viewer"],
+      "expected": "Valid GFM table with header separator/alignment row; renders correctly when pasted."
+    },
+    {
+      "id": "TC-033",
+      "title": "SchemaContext serialised to readable text, not JSON",
+      "traces": { "story": "STORY-5.1.1", "feature": "FEAT-5.1", "epic": "EPIC-5" },
+      "level": "unit",
+      "type": "positive",
+      "priority": "P1",
+      "preconditions": ["A SchemaContext object"],
+      "steps": ["Serialise it for the system prompt"],
+      "expected": "Output is human-readable text (not JSON), representing tables, columns, types, relationships, via a shared renderer."
+    },
+    {
+      "id": "TC-034",
+      "title": "Schema cached by connection hash; cache hit skips re-extraction",
+      "traces": { "story": "STORY-5.2.1", "feature": "FEAT-5.2", "epic": "EPIC-5" },
+      "level": "integration",
+      "type": "positive",
+      "priority": "P1",
+      "preconditions": ["Seed Postgres"],
+      "steps": ["Run two queries in one session", "Spy on getSchema"],
+      "expected": "Second query reuses the cache (keyed by connection-string hash); getSchema runs once."
+    },
+    {
+      "id": "TC-035",
+      "title": "Relevant-table selection sends only named tables in detail",
+      "traces": { "story": "STORY-5.2.2", "feature": "FEAT-5.2", "epic": "EPIC-5" },
+      "level": "integration",
+      "type": "positive",
+      "priority": "P1",
+      "preconditions": ["Large schema (200+ tables)", "mocked Claude returning relevant_tables"],
+      "steps": ["First query (full schema)", "Second query (relevant only)"],
+      "expected": "First call sends full schema; subsequent call sends only the named tables in detail; small schemas degrade gracefully."
+    },
+    {
+      "id": "TC-036",
+      "title": "Last 10 queries recalled in session",
+      "traces": { "story": "STORY-6.1.1", "feature": "FEAT-6.1", "epic": "EPIC-6" },
+      "level": "integration",
+      "type": "positive",
+      "priority": "P2",
+      "preconditions": ["Session with >10 queries run"],
+      "steps": ["Issue recall"],
+      "expected": "Up to 10 most-recent queries listed (question + constructed query), most-recent-first."
+    },
+    {
+      "id": "TC-037",
+      "title": "History persisted to ~/.claude-query/history.json; malformed file tolerated",
+      "traces": { "story": "STORY-6.1.2", "feature": "FEAT-6.1", "epic": "EPIC-6" },
+      "level": "integration",
+      "type": "negative",
+      "priority": "P2",
+      "preconditions": ["Writable home directory"],
+      "steps": ["Run a query", "Corrupt the history file", "Run again"],
+      "expected": "History written to the path (dir created if missing); malformed file is handled without crashing."
+    },
+    {
+      "id": "TC-038",
+      "title": "REPL accepts multiple questions and reuses schema cache",
+      "traces": { "story": "STORY-6.2.1", "feature": "FEAT-6.2", "epic": "EPIC-6" },
+      "level": "e2e",
+      "type": "positive",
+      "priority": "P2",
+      "preconditions": ["Seed Postgres"],
+      "steps": ["Enter REPL", "Ask two questions", "Exit"],
+      "expected": "Both questions answered; schema extracted once; exit command ends the session cleanly."
+    },
+    {
+      "id": "TC-039",
+      "title": "--save exports results in the chosen format",
+      "traces": { "story": "STORY-6.2.2", "feature": "FEAT-6.2", "epic": "EPIC-6" },
+      "level": "integration",
+      "type": "positive",
+      "priority": "P2",
+      "preconditions": ["A result set"],
+      "steps": ["Run with `--output csv --save out.csv`"],
+      "expected": "Results written to out.csv in CSV format; success path reported; existing-file behaviour is defined."
+    },
+    {
+      "id": "TC-040",
+      "title": "README documents install, API key, per-adapter setup, flags, governance, limitations",
+      "traces": { "story": "STORY-6.3.1", "feature": "FEAT-6.3", "epic": "EPIC-6" },
+      "level": "e2e",
+      "type": "positive",
+      "priority": "P2",
+      "preconditions": ["README present"],
+      "steps": ["Review README against the checklist"],
+      "expected": "Covers npx + global install, ANTHROPIC_API_KEY, per-adapter connection formats with 5 examples each, full flag reference, --schema-only governance note, and known limitations."
+    },
+    {
+      "id": "TC-041",
+      "title": "End-to-end Postgres smoke: question → constructed query → results table",
+      "traces": { "epic": "EPIC-1", "feature": "FEAT-1.2" },
+      "level": "e2e",
+      "type": "positive",
+      "priority": "P0",
+      "preconditions": ["Seed Postgres", "live ANTHROPIC_API_KEY"],
+      "steps": [
+        "Run: claude-query --source postgres://localhost/customers \"Which customers signed up in the last 30 days and have not made a purchase?\""
+      ],
+      "expected": "Constructed SELECT is shown, passes safety validation, executes, and a results table is rendered."
+    }
+  ],
+  "traceabilityMatrix": {
+    "note": "Every P0 backlog story maps to at least one P0 test case. Safety stories (STORY-3.1.1/3.1.2/3.3.1/3.3.2) are covered by security-type cases TC-021, TC-022, TC-024, TC-025.",
+    "byEpic": {
+      "EPIC-1": ["TC-001", "TC-002", "TC-003", "TC-004", "TC-005", "TC-006", "TC-007", "TC-008", "TC-009", "TC-041"],
+      "EPIC-2": ["TC-010", "TC-011", "TC-012", "TC-013", "TC-014", "TC-015", "TC-016", "TC-017", "TC-018", "TC-019", "TC-020"],
+      "EPIC-3": ["TC-021", "TC-022", "TC-023", "TC-024", "TC-025"],
+      "EPIC-4": ["TC-026", "TC-027", "TC-028", "TC-029", "TC-030", "TC-031", "TC-032"],
+      "EPIC-5": ["TC-033", "TC-034", "TC-035"],
+      "EPIC-6": ["TC-036", "TC-037", "TC-038", "TC-039", "TC-040"]
+    }
+  }
+}
