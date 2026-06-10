@@ -52,15 +52,55 @@ export function buildProgram(onRun: (opts: CliOptions) => void): Command {
   return program;
 }
 
+async function execute(opts: CliOptions): Promise<void> {
+  // Imported lazily so `buildProgram` (and its tests) stay free of SDK / adapter
+  // side effects until an actual run is requested.
+  const Anthropic = (await import("@anthropic-ai/sdk")).default;
+  const { resolveAdapter } = await import("./adapters/registry.js");
+  const { runQuery } = await import("./pipeline.js");
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    process.stderr.write("Error: ANTHROPIC_API_KEY is not set.\n");
+    process.exit(1);
+  }
+
+  const adapter = resolveAdapter(opts.source);
+  const claude = new Anthropic();
+
+  const result = await runQuery({
+    adapter,
+    claude,
+    source: opts.source,
+    question: opts.question,
+    schemaOnly: opts.schemaOnly,
+    dryRun: opts.dryRun,
+  });
+
+  if (opts.explain) {
+    process.stdout.write(`Reasoning:\n  ${result.reasoning}\n\n`);
+  }
+  process.stdout.write(`Constructed query (${result.queryType}):\n  ${result.query}\n`);
+
+  if (!result.executed) {
+    const why = opts.schemaOnly ? "schema-only" : "dry-run";
+    process.stdout.write(`\n(Not executed — ${why} mode.)\n`);
+    return;
+  }
+
+  // Output formatters (table/json/csv/markdown) land in EPIC-4; for now emit a
+  // capped JSON dump so the pipeline is verifiably wired end to end.
+  const rows = (result.rows ?? []).slice(0, opts.limit);
+  process.stdout.write(`\nResults (${rows.length} rows):\n`);
+  process.stdout.write(`${JSON.stringify(rows, null, 2)}\n`);
+}
+
 function main(): void {
   const program = buildProgram((opts) => {
-    // The run pipeline (adapter → constructQuery → execute → format) lands in
-    // EPIC-2..4. For now, surface the validated options so the scaffold is
-    // verifiably wired end to end.
-    process.stdout.write(
-      `Ready: querying ${opts.source} (output=${opts.output}, limit=${opts.limit}` +
-        `${opts.dryRun ? ", dry-run" : ""}${opts.schemaOnly ? ", schema-only" : ""})\n`,
-    );
+    execute(opts).catch((err: unknown) => {
+      const message = err instanceof Error ? err.message : String(err);
+      process.stderr.write(`Error: ${message}\n`);
+      process.exitCode = 1;
+    });
   });
 
   try {

@@ -3,17 +3,7 @@ import type {
   TableSchema,
   ColumnSchema,
 } from "../adapters/adapter.js";
-
-/** Forbidden SQL statement types — the soft-gate instruction (backlog FEAT-3.2). */
-const FORBIDDEN_SQL = [
-  "INSERT",
-  "UPDATE",
-  "DELETE",
-  "DROP",
-  "ALTER",
-  "CREATE",
-  "TRUNCATE",
-];
+import { SELECT_ONLY_INSTRUCTION } from "../safety/instruction.js";
 
 function serializeColumn(col: ColumnSchema): string {
   const parts = [`  - ${col.name} (${col.type})`];
@@ -73,13 +63,7 @@ export function buildSystemPrompt(
   ];
 
   if (schema.queryType === "sql") {
-    sections.push(
-      "",
-      "SAFETY",
-      `You may only generate SELECT statements. Never generate ${FORBIDDEN_SQL.join(
-        ", ",
-      )}, or any other data-definition or data-modifying statement.`,
-    );
+    sections.push("", "SAFETY", SELECT_ONLY_INSTRUCTION);
   }
 
   if (options.schemaOnly) {
