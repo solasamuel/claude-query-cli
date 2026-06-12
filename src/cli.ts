@@ -58,6 +58,7 @@ async function execute(opts: CliOptions): Promise<void> {
   const Anthropic = (await import("@anthropic-ai/sdk")).default;
   const { resolveAdapter } = await import("./adapters/registry.js");
   const { runQuery } = await import("./pipeline.js");
+  const { renderOutput } = await import("./output/render.js");
 
   if (!process.env.ANTHROPIC_API_KEY) {
     process.stderr.write("Error: ANTHROPIC_API_KEY is not set.\n");
@@ -76,22 +77,20 @@ async function execute(opts: CliOptions): Promise<void> {
     dryRun: opts.dryRun,
   });
 
-  if (opts.explain) {
-    process.stdout.write(`Reasoning:\n  ${result.reasoning}\n\n`);
-  }
-  process.stdout.write(`Constructed query (${result.queryType}):\n  ${result.query}\n`);
+  const mode = opts.schemaOnly
+    ? "schema-only"
+    : opts.dryRun
+      ? "dry-run"
+      : undefined;
 
-  if (!result.executed) {
-    const why = opts.schemaOnly ? "schema-only" : "dry-run";
-    process.stdout.write(`\n(Not executed — ${why} mode.)\n`);
-    return;
-  }
-
-  // Output formatters (table/json/csv/markdown) land in EPIC-4; for now emit a
-  // capped JSON dump so the pipeline is verifiably wired end to end.
-  const rows = (result.rows ?? []).slice(0, opts.limit);
-  process.stdout.write(`\nResults (${rows.length} rows):\n`);
-  process.stdout.write(`${JSON.stringify(rows, null, 2)}\n`);
+  process.stdout.write(
+    renderOutput(result, {
+      output: opts.output,
+      limit: opts.limit,
+      explain: opts.explain,
+      mode,
+    }) + "\n",
+  );
 }
 
 function main(): void {
