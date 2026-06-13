@@ -59,6 +59,7 @@ async function execute(opts: CliOptions): Promise<void> {
   const { resolveAdapter } = await import("./adapters/registry.js");
   const { runQuery } = await import("./pipeline.js");
   const { renderOutput } = await import("./output/render.js");
+  const { SchemaCache } = await import("./schema/cache.js");
 
   if (!process.env.ANTHROPIC_API_KEY) {
     process.stderr.write("Error: ANTHROPIC_API_KEY is not set.\n");
@@ -67,6 +68,8 @@ async function execute(opts: CliOptions): Promise<void> {
 
   const adapter = resolveAdapter(opts.source);
   const claude = new Anthropic();
+  // Session schema cache — reused across questions once the REPL (EPIC-6) lands.
+  const cache = new SchemaCache();
 
   const result = await runQuery({
     adapter,
@@ -75,6 +78,7 @@ async function execute(opts: CliOptions): Promise<void> {
     question: opts.question,
     schemaOnly: opts.schemaOnly,
     dryRun: opts.dryRun,
+    cache,
   });
 
   const mode = opts.schemaOnly
