@@ -1,8 +1,11 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import type { DataSourceAdapter, Row } from "./adapters/adapter.js";
+import type { DataSourceAdapter, Row, SchemaContext } from "./adapters/adapter.js";
 import { constructQuery } from "./claude/client.js";
 import { assertSelectOnly } from "./safety/sql.js";
 import { redactSchemaForGovernance } from "./safety/schema-only.js";
+import type { SchemaCache } from "./schema/cache.js";
+import { shouldNarrow, narrowToRelevantTables } from "./schema/relevant.js";
+import { selectRelevantTables } from "./schema/select-tables.js";
 
 export interface RunQueryOptions {
   adapter: DataSourceAdapter;
@@ -15,6 +18,8 @@ export interface RunQueryOptions {
   /** --dry-run: show the query, do not execute (FEAT-4.1). */
   dryRun: boolean;
   model?: string;
+  /** Optional session schema cache; skips re-extraction on a hit (FEAT-5.2). */
+  cache?: SchemaCache;
 }
 
 export interface RunQueryResult {
@@ -35,15 +40,35 @@ export interface RunQueryResult {
  * disconnected, even on error.
  */
 export async function runQuery(options: RunQueryOptions): Promise<RunQueryResult> {
-  const { adapter, claude, source, question, schemaOnly, dryRun, model } =
+  const { adapter, claude, source, question, schemaOnly, dryRun, model, cache } =
     options;
 
   try {
     await adapter.connect(source);
-    const rawSchema = await adapter.getSchema();
-    const schema = schemaOnly
-      ? redactSchemaForGovernance(rawSchema)
-      : rawSchema;
+
+    // Extract the full schema once per session: a cache hit (keyed by the
+    // connection-string hash) skips re-extraction (backlog FEAT-5.2 / TC-034).
+    const load = () => adapter.getSchema();
+    const fullSchema: SchemaContext = cache
+      ? await cache.getOrLoad(source, load)
+      : await load();
+
+    // For a large schema, ask Claude which tables are relevant and send only
+    // those in detail; small schemas are sent whole (FEAT-5.2 / TC-035).
+    let schema = fullSchema;
+    if (shouldNarrow(fullSchema)) {
+      const relevant = await selectRelevantTables(
+        claude,
+        fullSchema,
+        question,
+        model,
+      );
+      schema = narrowToRelevantTables(fullSchema, relevant);
+    }
+
+    if (schemaOnly) {
+      schema = redactSchemaForGovernance(schema);
+    }
 
     const { query, query_type, reasoning } = await constructQuery(claude, {
       schema,
