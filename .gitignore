@@ -141,3 +141,11 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Local secrets for running examples (never commit / publish)
+.env.local
+.env.*.local
+
+# Example --save outputs produced by demo runs
+/pagila_durations.csv
+/*_durations.csv
