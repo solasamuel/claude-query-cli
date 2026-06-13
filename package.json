@@ -1,25 +1,63 @@
 {
   "name": "claude-query",
   "version": "0.1.0",
-  "description": "Natural language queries against any data source via Claude API",
+  "description": "Natural language queries against any data source (PostgreSQL, CSV, JSON, Notion, Airtable) via Claude API tool use, with schema-first context and SELECT-only safety validation",
   "type": "module",
   "bin": {
     "claude-query": "./dist/cli.js"
   },
   "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "typecheck:tests": "tsc --noEmit -p tsconfig.test.json",
-    "start": "node dist/cli.js"
+    "start": "node dist/cli.js",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run typecheck && npm test && npm run build"
   },
   "engines": {
     "node": ">=18"
   },
+  "keywords": [
+    "claude",
+    "anthropic",
+    "cli",
+    "natural-language",
+    "sql",
+    "postgres",
+    "csv",
+    "json",
+    "notion",
+    "airtable",
+    "text-to-sql",
+    "llm",
+    "tool-use",
+    "database"
+  ],
   "author": "Sola Samuel / Spearhead Finance Ltd",
   "license": "MIT",
+  "homepage": "https://github.com/solasamuel/claude-query-cli#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/solasamuel/claude-query-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/solasamuel/claude-query-cli/issues"
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",
     "@notionhq/client": "^5.22.0",
