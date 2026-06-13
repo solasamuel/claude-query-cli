@@ -5,7 +5,7 @@
     "tagline": "Natural language queries against any data source via Claude API",
     "documentVersion": "1.0",
     "documentDate": "2026-05",
-    "author": "Sola Samuel / Spearhead Finance Ltd",
+    "author": "Sola Samuel",
     "buildEstimate": "3-4 evenings",
     "primaryStack": [
       "TypeScript",

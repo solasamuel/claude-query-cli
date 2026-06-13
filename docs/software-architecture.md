@@ -1,7 +1,7 @@
 # claude-query — Software Architecture
 
 **Document version:** 1.0 — May 2026
-**Author:** Sola Samuel / Spearhead Finance Ltd
+**Author:** Sola Samuel
 **Related documents:** [`product-backlog.json`](./product-backlog.json) · [`test-plan.json`](./test-plan.json)
 
 ---
