@@ -48,7 +48,7 @@
     "tool-use",
     "database"
   ],
-  "author": "Sola Samuel / Spearhead Finance Ltd",
+  "author": "Sola Samuel",
   "license": "MIT",
   "homepage": "https://github.com/solasamuel/claude-query-cli#readme",
   "repository": {

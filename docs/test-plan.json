@@ -4,7 +4,7 @@
     "name": "claude-query Test Plan",
     "version": "1.0",
     "date": "2026-05",
-    "author": "Sola Samuel / Spearhead Finance Ltd",
+    "author": "Sola Samuel",
     "linkedBacklog": "product-backlog.json",
     "overview": "Verifies claude-query against its product backlog. Each test case links to a backlog story, feature, or epic via the `traces` field. The plan emphasises the two hard requirements: destructive queries must never execute, and --schema-only must never transmit row data.",
     "scope": {

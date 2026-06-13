@@ -257,4 +257,4 @@ This addresses the most common enterprise objection — *"we can't give you prod
 
 ---
 
-*claude-query — FDE side project · Sola Samuel / Spearhead Finance Ltd · v1.0, May 2026*
+*claude-query — FDE side project · Sola Samuel · v1.0, May 2026*
