@@ -44,6 +44,9 @@ export function buildProgram(onRun: (opts: CliOptions) => void): Command {
       "--output <format>",
       `output format: ${OUTPUT_FORMATS.join(" | ")}`,
     )
+    .option("--save <file>", "export the results to a file")
+    .option("--force", "overwrite the --save target if it exists", false)
+    .option("--repl", "interactive mode: ask multiple questions", false)
     .action((question: string | undefined, raw) => {
       const opts = parseCliOptions(question, raw);
       onRun(opts);
@@ -59,42 +62,83 @@ async function execute(opts: CliOptions): Promise<void> {
   const { resolveAdapter } = await import("./adapters/registry.js");
   const { runQuery } = await import("./pipeline.js");
   const { renderOutput } = await import("./output/render.js");
+  const { saveResults } = await import("./output/save.js");
+  const { applyLimit } = await import("./output/limit.js");
   const { SchemaCache } = await import("./schema/cache.js");
+  const { SessionHistory } = await import("./history/history.js");
 
   if (!process.env.ANTHROPIC_API_KEY) {
     process.stderr.write("Error: ANTHROPIC_API_KEY is not set.\n");
     process.exit(1);
   }
 
-  const adapter = resolveAdapter(opts.source);
   const claude = new Anthropic();
-  // Session schema cache — reused across questions once the REPL (EPIC-6) lands.
-  const cache = new SchemaCache();
-
-  const result = await runQuery({
-    adapter,
-    claude,
-    source: opts.source,
-    question: opts.question,
-    schemaOnly: opts.schemaOnly,
-    dryRun: opts.dryRun,
-    cache,
-  });
+  const history = new SessionHistory();
+  history.load();
 
   const mode = opts.schemaOnly
-    ? "schema-only"
+    ? ("schema-only" as const)
     : opts.dryRun
-      ? "dry-run"
+      ? ("dry-run" as const)
       : undefined;
 
-  process.stdout.write(
-    renderOutput(result, {
+  // Run one question end to end: pipeline → render → optional save → history.
+  // A fresh adapter per question keeps connection lifecycles clean.
+  const askOnce = async (question: string, cache: InstanceType<typeof SchemaCache>): Promise<string> => {
+    const adapter = resolveAdapter(opts.source);
+    const result = await runQuery({
+      adapter,
+      claude,
+      source: opts.source,
+      question,
+      schemaOnly: opts.schemaOnly,
+      dryRun: opts.dryRun,
+      cache,
+    });
+
+    let out = renderOutput(result, {
       output: opts.output,
       limit: opts.limit,
       explain: opts.explain,
       mode,
-    }) + "\n",
-  );
+    });
+
+    history.record({ question, query: result.query });
+
+    if (opts.save && result.executed && result.rows) {
+      const { rows } = applyLimit(result.rows, opts.limit);
+      const path = saveResults(rows, opts.output, opts.save, {
+        force: opts.force,
+      });
+      out += `\n\nSaved results to ${path}`;
+    }
+
+    return out;
+  };
+
+  if (opts.repl) {
+    const { runRepl } = await import("./repl/repl.js");
+    const { createInterface } = await import("node:readline");
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    const prompt = (): Promise<string | null> =>
+      new Promise((resolve) => rl.question("claude-query> ", (a) => resolve(a)));
+
+    process.stdout.write(
+      `Connected to ${opts.source}. Ask a question, or type "exit" to quit.\n`,
+    );
+    await runRepl({
+      prompt,
+      write: (s) => process.stdout.write(s),
+      ask: askOnce,
+    });
+    rl.close();
+    history.save();
+    return;
+  }
+
+  const cache = new SchemaCache();
+  process.stdout.write((await askOnce(opts.question, cache)) + "\n");
+  history.save();
 }
 
 function main(): void {

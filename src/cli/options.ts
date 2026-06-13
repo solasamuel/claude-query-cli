@@ -18,6 +18,9 @@ export interface RawCliOptions {
   dryRun?: boolean;
   schemaOnly?: boolean;
   explain?: boolean;
+  save?: string;
+  force?: boolean;
+  repl?: boolean;
 }
 
 /** Validated, typed options the rest of the app consumes. */
@@ -29,6 +32,12 @@ export interface CliOptions {
   dryRun: boolean;
   schemaOnly: boolean;
   explain: boolean;
+  /** --save: path to export results to (FEAT-6.2). */
+  save?: string;
+  /** --force: overwrite an existing --save target (FEAT-6.2). */
+  force: boolean;
+  /** --repl: interactive multi-question session (FEAT-6.2). */
+  repl: boolean;
 }
 
 function isOutputFormat(value: string): value is OutputFormat {
@@ -43,7 +52,10 @@ export function parseCliOptions(
   question: string | undefined,
   raw: RawCliOptions,
 ): CliOptions {
-  if (!question || question.trim() === "") {
+  const repl = raw.repl ?? false;
+
+  // In REPL mode questions come from stdin, so a positional question is optional.
+  if (!repl && (!question || question.trim() === "")) {
     throw new CliValidationError(
       'A question is required, e.g. claude-query --source <conn> "How many orders today?"',
     );
@@ -74,12 +86,15 @@ export function parseCliOptions(
   }
 
   return {
-    question,
+    question: question ?? "",
     source: raw.source,
     output,
     limit,
     dryRun: raw.dryRun ?? false,
     schemaOnly: raw.schemaOnly ?? false,
     explain: raw.explain ?? false,
+    save: raw.save,
+    force: raw.force ?? false,
+    repl,
   };
 }

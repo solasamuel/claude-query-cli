@@ -75,6 +75,30 @@ The constructed query is always shown before any results. For a first connection
 | `--explain` | Show Claude's step-by-step reasoning before the query. | off |
 | `--limit <N>` | Cap results at N rows regardless of the query. | 100 |
 | `--output <fmt>` | Output format: `table`, `json`, `csv`, `markdown`. | table |
+| `--save <file>` | Export the results to a file in the chosen `--output` format. Refuses to overwrite unless `--force`. | — |
+| `--force` | Overwrite the `--save` target if it already exists. | off |
+| `--repl` | Interactive mode: ask multiple questions in one session (the question argument is optional). | off |
+
+---
+
+## Sessions, history & saving
+
+- **Interactive REPL** — run `claude-query --source <conn> --repl` to ask several questions against the same source without reconnecting. The schema is extracted once and reused across questions in the session. Type `exit`, `quit`, or `:q` to leave.
+
+  ```bash
+  claude-query --source postgres://localhost/shop --repl
+  claude-query> Top 5 products by revenue this quarter
+  claude-query> Now break that down by country
+  claude-query> exit
+  ```
+
+- **Query history** — the last 10 queries are recalled within a session, and the full log is persisted to `~/.claude-query/history.json` across sessions (a malformed history file is tolerated, not fatal).
+
+- **Saving results** — add `--save out.csv` to export the result set in the chosen `--output` format. Use `--force` to overwrite an existing file:
+
+  ```bash
+  claude-query --source ./sales.csv "Total revenue by region" --output csv --save revenue.csv
+  ```
 
 ---
 
