@@ -71,4 +71,28 @@ describe("parseCliOptions (FEAT-1.1)", () => {
       CliValidationError,
     );
   });
+
+  // FEAT-6.2: REPL mode does not require a positional question.
+  it("does not require a question when --repl is set", () => {
+    const opts = parseCliOptions(undefined, { source: "s", repl: true });
+    expect(opts.repl).toBe(true);
+    expect(opts.question).toBe("");
+  });
+
+  it("captures --save and --force", () => {
+    const opts = parseCliOptions("q", {
+      source: "s",
+      save: "out.csv",
+      force: true,
+    });
+    expect(opts.save).toBe("out.csv");
+    expect(opts.force).toBe(true);
+  });
+
+  it("defaults save to undefined and force/repl to false", () => {
+    const opts = parseCliOptions("q", { source: "s" });
+    expect(opts.save).toBeUndefined();
+    expect(opts.force).toBe(false);
+    expect(opts.repl).toBe(false);
+  });
 });
